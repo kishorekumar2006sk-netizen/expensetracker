@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Expense Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #eef2f3;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+.card {
+    background: #fff;
+    padding: 30px;
+    border-radius: 15px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+input {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    font-size: 16px;
+}
+button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    background: #3498db;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+}
+button:hover {
+    background: #2980b9;
+}
+.expense-item {
+    display: flex;
+    justify-content: space-between;
+    background: #f9f9f9;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+}
+.delete-btn {
+    color: red;
+    cursor: pointer;
+    font-weight: bold;
+}
+.total {
+    margin-top: 15px;
+    font-weight: bold;
+    text-align: right;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+    <h2>💰 Expense Tracker</h2>
+
+    <input type="text" id="itemName" placeholder="Expense name">
+    <input type="number" id="itemAmount" step="0.01" placeholder="Amount (₹)">
+    <button onclick="addExpense()">Add Expense</button>
+
+    <div id="expenseList"></div>
+    <div class="total" id="totalAmount">Total: ₹0.00</div>
+</div>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+// 🔐 SUPABASE CONFIG (URL & KEY correct)
+const SUPABASE_URL = "https://ipprstjjbyrwxikkcftp.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwcHJzdGpqYnlyd3hpa2tjZnRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMDQxMTEsImV4cCI6MjA4Mzg4MDExMX0.hHKR1HlGxb6v-r35N0bQ3OrXY_f922rNH3Y-rxoBj7A";
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// 📥 LOAD EXPENSES
+async function loadExpenses() {
+    const { data, error } = await supabase
+        .from("expenses")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        console.error(error.message);
+        return;
+    }
+
+    const list = document.getElementById("expenseList");
+    list.innerHTML = "";
+
+    let total = 0;
+
+    data.forEach(e => {
+        total += e.amount;
+
+        const div = document.createElement("div");
+        div.className = "expense-item";
+        div.innerHTML = `
+            <span>${e.name} - ₹${e.amount.toFixed(2)}</span>
+            <span class="delete-btn" onclick="deleteExpense(${e.id})">X</span>
+        `;
+        list.appendChild(div);
+    });
+
+    document.getElementById("totalAmount").innerText =
+        "Total: ₹" + total.toFixed(2);
+}
+
+// ➕ ADD EXPENSE
+window.addExpense = async function () {
+    const name = document.getElementById("itemName").value.trim();
+    const amount = document.getElementById("itemAmount").value;
+
+    if (!name || !amount) {
+        alert("Name and amount fill pannunga");
+        return;
+    }
+
+    const { error } = await supabase
+        .from("expenses")
+        .insert([{
+            name: name,
+            amount: parseFloat(amount)
+        }]);
+
+    if (error) {
+        alert(error.message);
+    } else {
+        document.getElementById("itemName").value = "";
+        document.getElementById("itemAmount").value = "";
+        loadExpenses();
+    }
+};
+
+// ❌ DELETE EXPENSE
+window.deleteExpense = async function (id) {
+    await supabase.from("expenses").delete().eq("id", id);
+    loadExpenses();
+};
+
+// 🚀 INITIAL LOAD
+loadExpenses();
+</script>
+
+</body>
+</html>
